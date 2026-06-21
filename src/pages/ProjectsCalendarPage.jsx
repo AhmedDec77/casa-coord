@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import AppShell from '../components/AppShell'
+import MonthCalendar from '../components/MonthCalendar'
 
 export default function ProjectsCalendarPage() {
   const navigate = useNavigate()
@@ -46,15 +47,22 @@ export default function ProjectsCalendarPage() {
       ) : projects.length === 0 ? (
         <p style={{ color: 'var(--ink-soft)' }}>Noch keine Projekte vorhanden.</p>
       ) : (
-        <div style={styles.grid}>
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onClick={() => navigate(`/projects/${project.id}`)}
-            />
-          ))}
-        </div>
+        <>
+          <div style={styles.grid}>
+            {projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onClick={() => navigate(`/projects/${project.id}`)}
+              />
+            ))}
+          </div>
+
+          <MonthCalendar
+            projects={projects}
+            onProjectClick={(project) => navigate(`/projects/${project.id}`)}
+          />
+        </>
       )}
 
       {showNewProject && (
