@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import AppShell from '../components/AppShell'
 import GanttChart from '../components/GanttChart'
 import TaskTable from '../components/TaskTable'
@@ -8,10 +9,12 @@ import NewTaskForm from '../components/NewTaskForm'
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
+  const { isAdmin } = useAuth()
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showEditProject, setShowEditProject] = useState(false)
 
   const loadAll = useCallback(async () => {
     const [projectRes, tasksRes, profilesRes] = await Promise.all([
@@ -106,11 +109,27 @@ export default function ProjectDetailPage() {
 
       <div style={styles.header}>
         <div style={{ ...styles.colorBar, background: project.color }} />
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 style={styles.title}>{project.name}</h1>
           {project.client_name && <p style={styles.subtitle}>{project.client_name}</p>}
         </div>
+        {isAdmin && (
+          <button onClick={() => setShowEditProject(true)} style={styles.editButton}>
+            Modifier
+          </button>
+        )}
       </div>
+
+      {showEditProject && (
+        <EditProjectModal
+          project={project}
+          onClose={() => setShowEditProject(false)}
+          onSaved={() => {
+            setShowEditProject(false)
+            loadAll()
+          }}
+        />
+      )}
 
       <section style={{ marginBottom: 32 }}>
         <h2 style={styles.sectionTitle}>Zeitplan (Gantt)</h2>
@@ -129,6 +148,135 @@ export default function ProjectDetailPage() {
       </section>
     </AppShell>
   )
+}
+
+function EditProjectModal({ project, onClose, onSaved }) {
+  const [name, setName] = useState(project.name || '')
+  const [clientName, setClientName] = useState(project.client_name || '')
+  const [address, setAddress] = useState(project.address || '')
+  const [startDate, setStartDate] = useState(project.start_date || '')
+  const [endDate, setEndDate] = useState(project.end_date || '')
+  const [color, setColor] = useState(project.color || '#2563eb')
+  const [error, setError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSubmitting(true)
+    setError(null)
+    const { error } = await supabase
+      .from('projects')
+      .update({
+        name,
+        client_name: clientName || null,
+        address: address || null,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        color,
+      })
+      .eq('id', project.id)
+    setSubmitting(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <div style={modalStyles.overlay} onClick={onClose}>
+      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ fontSize: 20, marginBottom: 18 }}>Modifier le projet</h2>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <ModalField label="Nom du projet">
+            <input required value={name} onChange={(e) => setName(e.target.value)} style={modalStyles.input} />
+          </ModalField>
+          <ModalField label="Client">
+            <input value={clientName} onChange={(e) => setClientName(e.target.value)} style={modalStyles.input} />
+          </ModalField>
+          <ModalField label="Adresse">
+            <input value={address} onChange={(e) => setAddress(e.target.value)} style={modalStyles.input} />
+          </ModalField>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <ModalField label="Début" style={{ flex: 1 }}>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={modalStyles.input} />
+            </ModalField>
+            <ModalField label="Fin" style={{ flex: 1 }}>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={modalStyles.input} />
+            </ModalField>
+          </div>
+          <ModalField label="Couleur">
+            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ ...modalStyles.input, height: 38, padding: 4 }} />
+          </ModalField>
+
+          {error && <div style={{ color: '#b91c1c', fontSize: 13 }}>{error}</div>}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+            <button type="button" onClick={onClose} style={modalStyles.secondaryButton}>
+              Annuler
+            </button>
+            <button type="submit" disabled={submitting} style={modalStyles.primaryButton}>
+              {submitting ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ModalField({ label, children, style }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 13, fontWeight: 600, color: 'var(--ink-soft)', ...style }}>
+      {label}
+      {children}
+    </label>
+  )
+}
+
+const modalStyles = {
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(28, 26, 23, 0.4)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    zIndex: 50,
+  },
+  modal: {
+    background: '#fff',
+    borderRadius: 'var(--radius-lg)',
+    padding: 28,
+    width: '100%',
+    maxWidth: 420,
+    boxShadow: 'var(--shadow-md)',
+  },
+  input: {
+    padding: '9px 11px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--line-strong)',
+    background: '#fff',
+  },
+  primaryButton: {
+    padding: '10px 16px',
+    borderRadius: 'var(--radius-sm)',
+    border: 'none',
+    background: 'var(--ink)',
+    color: '#fff',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  secondaryButton: {
+    padding: '10px 16px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--line-strong)',
+    background: '#fff',
+    color: 'var(--ink)',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
 }
 
 const styles = {
@@ -162,5 +310,16 @@ const styles = {
     fontSize: 16,
     fontWeight: 700,
     marginBottom: 12,
+  },
+  editButton: {
+    padding: '8px 14px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--line-strong)',
+    background: '#fff',
+    color: 'var(--ink)',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: 13,
+    whiteSpace: 'nowrap',
   },
 }
