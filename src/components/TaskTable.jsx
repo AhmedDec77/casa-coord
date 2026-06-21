@@ -219,13 +219,11 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                         )}
                       </td>
                     </tr>
-                    {task.status === 'bloque' && (
-                      <tr>
-                        <td colSpan={8} style={{ padding: 0 }}>
-                          <TaskBlockersList taskId={task.id} />
-                        </td>
-                      </tr>
-                    )}
+                    <tr>
+                      <td colSpan={8} style={{ padding: 0 }}>
+                        <TaskBlockersList taskId={task.id} />
+                      </td>
+                    </tr>
                   </Fragment>
                 )
               })}
