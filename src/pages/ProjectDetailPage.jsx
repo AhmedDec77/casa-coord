@@ -6,6 +6,7 @@ import AppShell from '../components/AppShell'
 import GanttChart from '../components/GanttChart'
 import TaskTable from '../components/TaskTable'
 import NewTaskForm from '../components/NewTaskForm'
+import TaskDetailModal from '../components/TaskDetailModal'
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -15,6 +16,7 @@ export default function ProjectDetailPage() {
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [showEditProject, setShowEditProject] = useState(false)
+  const [ganttDetailTask, setGanttDetailTask] = useState(null)
 
   const loadAll = useCallback(async () => {
     const [projectRes, tasksRes, profilesRes] = await Promise.all([
@@ -167,8 +169,16 @@ export default function ProjectDetailPage() {
 
       <section style={{ marginBottom: 32 }}>
         <h2 style={styles.sectionTitle}>Zeitplan (Gantt)</h2>
-        <GanttChart tasks={tasks} profiles={profiles} onTaskClick={() => {}} />
+        <GanttChart tasks={tasks} profiles={profiles} onTaskClick={setGanttDetailTask} />
       </section>
+
+      {ganttDetailTask && (
+        <TaskDetailModal
+          task={ganttDetailTask}
+          profiles={profiles}
+          onClose={() => setGanttDetailTask(null)}
+        />
+      )}
 
       <section>
         <h2 style={styles.sectionTitle}>Aufgaben</h2>
