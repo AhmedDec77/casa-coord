@@ -10,7 +10,7 @@ import TaskDetailModal from '../components/TaskDetailModal'
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [profiles, setProfiles] = useState([])
@@ -86,7 +86,25 @@ export default function ProjectDetailPage() {
     loadAll()
   }
 
+  // Marque le dernier blocage non résolu de cette tâche comme résolu
+  // (utilisé quand on quitte le statut "bloque" vers un autre statut).
+  async function resolveActiveBlocker(taskId) {
+    const { data, error: fetchError } = await supabase
+      .from('task_blockers')
+      .select('id')
+      .eq('task_id', taskId)
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    if (fetchError || !data || data.length === 0) return
+    await supabase
+      .from('task_blockers')
+      .update({ resolved_at: new Date().toISOString(), resolved_by: user.id })
+      .eq('id', data[0].id)
+  }
+
   async function handleUpdateTask(taskId, patch) {
+    const taskBeforeUpdate = tasks.find((t) => t.id === taskId)
     const { error } = await supabase.from('tasks').update(patch).eq('id', taskId)
     if (error) {
       console.error(error)
@@ -102,6 +120,9 @@ export default function ProjectDetailPage() {
       return
     }
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)))
+    if (patch.status && taskBeforeUpdate?.status === 'bloque' && patch.status !== 'bloque') {
+      await resolveActiveBlocker(taskId)
+    }
     if (patch.start_date || patch.end_date) {
       const updatedTask = tasks.find((t) => t.id === taskId)
       const newStart = patch.start_date ?? updatedTask?.start_date
