@@ -4,11 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { groupTasks } from '../lib/taskGroups'
 import BlockerModal from './BlockerModal'
 import TaskBlockersList from './TaskBlockersList'
+import TaskDetailModal from './TaskDetailModal'
 
 export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const { user, isAdmin } = useAuth()
   const [collapsed, setCollapsed] = useState({})
   const [blockerModalTask, setBlockerModalTask] = useState(null)
+  const [detailTask, setDetailTask] = useState(null)
+  const [editingTitleId, setEditingTitleId] = useState(null)
 
   function canEdit(task) {
     return isAdmin || task.assigned_to === user.id
@@ -80,14 +83,41 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                   <Fragment key={task.id}>
                     <tr style={styles.tr}>
                       <td style={styles.tdTitle}>
-                        <input
-                          defaultValue={task.title}
-                          disabled={!editable}
-                          onBlur={(e) => {
-                            if (e.target.value !== task.title) onUpdate(task.id, { title: e.target.value })
-                          }}
-                          style={{ ...styles.inlineInput, fontWeight: 600 }}
-                        />
+                        {editingTitleId === task.id ? (
+                          <input
+                            autoFocus
+                            defaultValue={task.title}
+                            disabled={!editable}
+                            onBlur={(e) => {
+                              if (e.target.value !== task.title) onUpdate(task.id, { title: e.target.value })
+                              setEditingTitleId(null)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.target.blur()
+                              if (e.key === 'Escape') setEditingTitleId(null)
+                            }}
+                            style={{ ...styles.inlineInput, fontWeight: 600 }}
+                          />
+                        ) : (
+                          <div style={styles.titleCell}>
+                            <button
+                              onClick={() => setDetailTask(task)}
+                              style={styles.titleLink}
+                              title="Details anzeigen"
+                            >
+                              {task.title}
+                            </button>
+                            {editable && (
+                              <button
+                                onClick={() => setEditingTitleId(task.id)}
+                                style={styles.editTitleButton}
+                                title="Titel bearbeiten"
+                              >
+                                ✎
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td style={styles.td}>
                         <span
@@ -212,6 +242,14 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
           onConfirm={handleBlockerConfirmed}
         />
       )}
+
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          profiles={profiles}
+          onClose={() => setDetailTask(null)}
+        />
+      )}
     </div>
   )
 }
@@ -286,12 +324,42 @@ const styles = {
     minWidth: 200,
   },
   inlineInput: {
-    border: '1px solid transparent',
-    background: 'transparent',
+    border: '1px solid var(--line-strong)',
+    background: '#fff',
     padding: '4px 6px',
     borderRadius: 4,
     width: '100%',
     fontSize: 13,
+  },
+  titleCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  titleLink: {
+    border: 'none',
+    background: 'transparent',
+    padding: '4px 6px',
+    borderRadius: 4,
+    fontSize: 13,
+    fontWeight: 600,
+    textAlign: 'left',
+    cursor: 'pointer',
+    color: 'var(--ink)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+    minWidth: 0,
+  },
+  editTitleButton: {
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--ink-soft)',
+    cursor: 'pointer',
+    fontSize: 12,
+    padding: 4,
+    flexShrink: 0,
   },
   select: {
     border: '1px solid var(--line-strong)',
