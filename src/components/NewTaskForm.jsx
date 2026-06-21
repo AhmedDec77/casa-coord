@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TRADE_LABELS } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { addWorkingDays, countWorkingDays } from '../lib/workingDays'
 
 export default function NewTaskForm({ profiles, onCreate }) {
   const { user, isAdmin, profile } = useAuth()
@@ -10,8 +11,22 @@ export default function NewTaskForm({ profiles, onCreate }) {
   const [assignedTo, setAssignedTo] = useState(isAdmin ? '' : user.id)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [includeSaturday, setIncludeSaturday] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+
+  // Quand le début ou la durée changent, on recalcule la fin automatiquement.
+  function handleDurationChange(days) {
+    if (!startDate || !days || days < 1) return
+    setEndDate(addWorkingDays(startDate, days, includeSaturday))
+  }
+
+  function handleStartDateChange(value) {
+    setStartDate(value)
+    if (endDate && value > endDate) setEndDate(value)
+  }
+
+  const currentDuration = startDate && endDate ? countWorkingDays(startDate, endDate, includeSaturday) : ''
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -24,12 +39,14 @@ export default function NewTaskForm({ profiles, onCreate }) {
         assigned_to: assignedTo || (isAdmin ? null : user.id),
         start_date: startDate,
         end_date: endDate || startDate,
+        include_saturday: includeSaturday,
         status: 'a_faire',
         progress: 0,
       })
       setTitle('')
       setStartDate('')
       setEndDate('')
+      setIncludeSaturday(false)
       setOpen(false)
     } catch (err) {
       setError(err.message)
@@ -76,7 +93,7 @@ export default function NewTaskForm({ profiles, onCreate }) {
         required
         type="date"
         value={startDate}
-        onChange={(e) => setStartDate(e.target.value)}
+        onChange={(e) => handleStartDateChange(e.target.value)}
         style={styles.input}
         title="Startdatum"
       />
@@ -87,6 +104,23 @@ export default function NewTaskForm({ profiles, onCreate }) {
         style={styles.input}
         title="Enddatum (optional, sonst = Start)"
       />
+      <input
+        type="number"
+        min={1}
+        value={currentDuration}
+        onChange={(e) => handleDurationChange(Number(e.target.value))}
+        placeholder="Tage"
+        style={{ ...styles.input, width: 64 }}
+        title="Dauer in Arbeitstagen — Enddatum wird automatisch berechnet"
+      />
+      <label style={styles.saturdayLabel}>
+        <input
+          type="checkbox"
+          checked={includeSaturday}
+          onChange={(e) => setIncludeSaturday(e.target.checked)}
+        />
+        Sa zählt
+      </label>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" onClick={() => setOpen(false)} style={styles.cancelButton}>
           Abbrechen
@@ -127,6 +161,14 @@ const styles = {
     borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--line-strong)',
     fontSize: 13,
+  },
+  saturdayLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    fontSize: 12,
+    color: 'var(--ink-soft)',
+    whiteSpace: 'nowrap',
   },
   cancelButton: {
     padding: '8px 12px',
