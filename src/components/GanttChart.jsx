@@ -4,7 +4,7 @@ import { groupTasks } from '../lib/taskGroups'
 
 const DAY_WIDTH = 28
 const ROW_HEIGHT = 40
-const GROUP_ROW_HEIGHT = 32
+const GROUP_ROW_HEIGHT = 38
 const LABEL_WIDTH = 220
 const ASSIGNEE_WIDTH = 120
 
@@ -74,7 +74,7 @@ export default function GanttChart({ tasks, profiles, onTaskClick }) {
                   style={styles.groupLabelRow}
                   title={row.label}
                 >
-                  <span style={{ ...styles.groupChevron, transform: row.collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>▾</span>
+                  <span style={styles.groupToggleBox}>{row.collapsed ? '+' : '−'}</span>
                   <span style={styles.groupLabelText}>{row.label}</span>
                   <span style={styles.groupCount}>{row.count}</span>
                 </button>
@@ -292,7 +292,7 @@ const styles = {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     padding: '0 10px',
     background: '#f3f1ec',
     border: 'none',
@@ -302,11 +302,20 @@ const styles = {
     cursor: 'pointer',
     textAlign: 'left',
   },
-  groupChevron: {
-    fontSize: 10,
-    color: 'var(--ink-soft)',
-    transition: 'transform 0.15s ease',
+  groupToggleBox: {
     flexShrink: 0,
+    width: 20,
+    height: 20,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 14,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: 'var(--ink)',
+    background: '#fff',
+    border: '1.5px solid var(--ink)',
+    borderRadius: 4,
   },
   groupLabelText: {
     fontSize: 12,
