@@ -99,7 +99,14 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                         type="date"
                         defaultValue={task.start_date}
                         disabled={!editable}
-                        onChange={(e) => onUpdate(task.id, { start_date: e.target.value })}
+                        onChange={(e) => {
+                          const newStart = e.target.value
+                          const patch = { start_date: newStart }
+                          // Si le nouveau début dépasse la fin actuelle, on pousse aussi la fin
+                          // pour ne pas violer la contrainte "end_date >= start_date".
+                          if (newStart > task.end_date) patch.end_date = newStart
+                          onUpdate(task.id, patch)
+                        }}
                         style={styles.dateInput}
                       />
                     </td>
@@ -108,7 +115,13 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                         type="date"
                         defaultValue={task.end_date}
                         disabled={!editable}
-                        onChange={(e) => onUpdate(task.id, { end_date: e.target.value })}
+                        onChange={(e) => {
+                          const newEnd = e.target.value
+                          const patch = { end_date: newEnd }
+                          // Si la nouvelle fin précède le début actuel, on recule aussi le début.
+                          if (newEnd < task.start_date) patch.start_date = newEnd
+                          onUpdate(task.id, patch)
+                        }}
                         style={styles.dateInput}
                       />
                     </td>
