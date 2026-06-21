@@ -167,7 +167,7 @@ export default function ProjectDetailPage() {
 
       <section style={{ marginBottom: 32 }}>
         <h2 style={styles.sectionTitle}>Zeitplan (Gantt)</h2>
-        <GanttChart tasks={tasks} onTaskClick={() => {}} />
+        <GanttChart tasks={tasks} profiles={profiles} onTaskClick={() => {}} />
       </section>
 
       <section>
