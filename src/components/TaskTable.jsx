@@ -47,6 +47,16 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   return (
     <div style={styles.wrapper}>
       <table style={styles.table}>
+        <colgroup>
+          <col style={{ width: '32%' }} />
+          <col style={{ width: '13%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '7%' }} />
+          <col style={{ width: '2%' }} />
+        </colgroup>
         <thead>
           <tr>
             <th style={styles.th}>Aufgabe</th>
@@ -204,11 +214,9 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                             defaultValue={task.progress}
                             disabled={!editable}
                             onChange={(e) => onUpdate(task.id, { progress: Number(e.target.value) })}
-                            style={{ width: 80 }}
+                            style={styles.progressSlider}
                           />
-                          <span style={{ fontSize: 12, color: 'var(--ink-soft)', width: 32 }}>
-                            {task.progress}%
-                          </span>
+                          <span style={styles.progressValue}>{task.progress}%</span>
                         </div>
                       </td>
                       <td style={styles.td}>
@@ -257,23 +265,25 @@ const styles = {
     border: '1px solid var(--line)',
     borderRadius: 'var(--radius-md)',
     background: 'var(--bg-elevated)',
-    overflowX: 'auto',
   },
   table: {
     width: '100%',
+    tableLayout: 'fixed',
     borderCollapse: 'collapse',
     fontSize: 13,
   },
   th: {
     textAlign: 'left',
-    padding: '10px 12px',
-    fontSize: 11,
+    padding: '10px 8px',
+    fontSize: 10,
     fontWeight: 700,
     textTransform: 'uppercase',
-    letterSpacing: '0.04em',
+    letterSpacing: '0.03em',
     color: 'var(--ink-soft)',
     background: '#faf9f7',
     borderBottom: '1px solid var(--line)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
   groupHeader: {
@@ -313,13 +323,14 @@ const styles = {
     borderBottom: '1px solid var(--line)',
   },
   td: {
-    padding: '8px 12px',
+    padding: '6px 8px',
     verticalAlign: 'middle',
+    overflow: 'hidden',
   },
   tdTitle: {
-    padding: '8px 12px',
+    padding: '6px 8px',
     verticalAlign: 'middle',
-    minWidth: 200,
+    overflow: 'hidden',
   },
   inlineInput: {
     border: '1px solid var(--line-strong)',
@@ -362,27 +373,45 @@ const styles = {
   select: {
     border: '1px solid var(--line-strong)',
     borderRadius: 4,
-    padding: '5px 6px',
+    padding: '5px 4px',
     background: '#fff',
-    fontSize: 12,
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
   },
   dateInput: {
     border: '1px solid var(--line-strong)',
     borderRadius: 4,
-    padding: '5px 6px',
-    fontSize: 12,
+    padding: '5px 2px',
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
   },
   badge: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 600,
-    padding: '3px 8px',
+    padding: '3px 7px',
     borderRadius: 999,
     whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: 'inline-block',
+    maxWidth: '100%',
   },
   progressCell: {
     display: 'flex',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 2,
+    width: '100%',
+  },
+  progressSlider: {
+    width: '100%',
+    maxWidth: '100%',
+  },
+  progressValue: {
+    fontSize: 10,
+    color: 'var(--ink-soft)',
+    textAlign: 'center',
   },
   deleteButton: {
     border: 'none',
