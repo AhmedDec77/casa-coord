@@ -1,4 +1,5 @@
 import { TRADE_LABELS, TRADE_COLORS, STATUS_LABELS, STATUS_COLORS } from '../lib/supabase'
+import { taskDurationWorkingDays } from '../lib/workingDays'
 import TaskBlockersList from './TaskBlockersList'
 
 export default function TaskDetailModal({ task, profiles, onClose }) {
@@ -47,6 +48,12 @@ export default function TaskDetailModal({ task, profiles, onClose }) {
             <span style={styles.metaLabel}>Zeitraum</span>
             <span style={styles.metaValue}>
               {formatDate(task.start_date)} → {formatDate(task.end_date)}
+            </span>
+          </div>
+          <div style={styles.metaItem}>
+            <span style={styles.metaLabel}>Dauer</span>
+            <span style={styles.metaValue}>
+              {taskDurationWorkingDays(task)} Arbeitstage{task.include_saturday ? ' (inkl. Sa)' : ''}
             </span>
           </div>
           <div style={styles.metaItem}>
