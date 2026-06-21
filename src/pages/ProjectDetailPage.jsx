@@ -54,12 +54,33 @@ export default function ProjectDetailPage() {
     }
   }, [projectId, loadAll])
 
+  // Si une tâche dépasse les dates actuelles du projet (avant/après), on étend
+  // automatiquement la plage du projet pour qu'elle reste cohérente.
+  async function extendProjectDatesIfNeeded(currentProject, taskStart, taskEnd) {
+    if (!currentProject || !taskStart || !taskEnd) return
+    const patch = {}
+    if (!currentProject.start_date || taskStart < currentProject.start_date) {
+      patch.start_date = taskStart
+    }
+    if (!currentProject.end_date || taskEnd > currentProject.end_date) {
+      patch.end_date = taskEnd
+    }
+    if (Object.keys(patch).length === 0) return
+    const { error } = await supabase.from('projects').update(patch).eq('id', currentProject.id)
+    if (error) {
+      console.error(error)
+      return
+    }
+    setProject((prev) => (prev ? { ...prev, ...patch } : prev))
+  }
+
   async function handleCreateTask(values) {
     const { error } = await supabase.from('tasks').insert({
       ...values,
       project_id: projectId,
     })
     if (error) throw error
+    await extendProjectDatesIfNeeded(project, values.start_date, values.end_date)
     loadAll()
   }
 
@@ -72,6 +93,12 @@ export default function ProjectDetailPage() {
       return
     }
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)))
+    if (patch.start_date || patch.end_date) {
+      const updatedTask = tasks.find((t) => t.id === taskId)
+      const newStart = patch.start_date ?? updatedTask?.start_date
+      const newEnd = patch.end_date ?? updatedTask?.end_date
+      await extendProjectDatesIfNeeded(project, newStart, newEnd)
+    }
   }
 
   async function handleDeleteTask(taskId) {
