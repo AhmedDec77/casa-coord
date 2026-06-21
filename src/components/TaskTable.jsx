@@ -79,9 +79,7 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                     onClick={() => toggleGroup(group.code)}
                     style={styles.groupHeader}
                   >
-                    <span style={{ ...styles.groupChevron, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
-                      ▾
-                    </span>
+                    <span style={styles.groupToggleBox}>{isCollapsed ? '+' : '−'}</span>
                     <span style={styles.groupLabel}>{group.label}</span>
                     <span style={styles.groupCount}>{group.tasks.length}</span>
                   </button>
@@ -290,8 +288,8 @@ const styles = {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
-    padding: '10px 12px',
+    gap: 12,
+    padding: '12px 12px',
     background: '#f3f1ec',
     border: 'none',
     borderBottom: '1px solid var(--line)',
@@ -299,14 +297,23 @@ const styles = {
     cursor: 'pointer',
     textAlign: 'left',
   },
-  groupChevron: {
-    fontSize: 11,
-    color: 'var(--ink-soft)',
-    transition: 'transform 0.15s ease',
-    display: 'inline-block',
+  groupToggleBox: {
+    flexShrink: 0,
+    width: 24,
+    height: 24,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 16,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: 'var(--ink)',
+    background: '#fff',
+    border: '1.5px solid var(--ink)',
+    borderRadius: 5,
   },
   groupLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 700,
     color: 'var(--ink)',
   },
