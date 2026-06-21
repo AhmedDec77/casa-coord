@@ -1,14 +1,23 @@
+import { useState } from 'react'
 import { TRADE_COLORS, STATUS_COLORS } from '../lib/supabase'
+import { groupTasks } from '../lib/taskGroups'
 
 const DAY_WIDTH = 28
 const ROW_HEIGHT = 40
+const GROUP_ROW_HEIGHT = 32
 const LABEL_WIDTH = 220
 
 export default function GanttChart({ tasks, onTaskClick }) {
+  const [collapsed, setCollapsed] = useState({})
+
   if (tasks.length === 0) {
     return (
       <div style={styles.empty}>Noch keine Aufgaben für dieses Projekt.</div>
     )
+  }
+
+  function toggleGroup(code) {
+    setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
   }
 
   const dates = tasks.flatMap((t) => [new Date(t.start_date), new Date(t.end_date)])
@@ -29,6 +38,20 @@ export default function GanttChart({ tasks, onTaskClick }) {
     return d
   })
 
+  // Construit une liste plate de lignes (en-tête de groupe ou tâche), pour
+  // garder la colonne des libellés et la zone des barres parfaitement alignées.
+  const groups = groupTasks(tasks)
+  const rows = []
+  for (const group of groups) {
+    const isCollapsed = collapsed[group.code] ?? true
+    rows.push({ type: 'group', code: group.code, label: group.label, count: group.tasks.length, collapsed: isCollapsed })
+    if (!isCollapsed) {
+      for (const task of group.tasks) {
+        rows.push({ type: 'task', task })
+      }
+    }
+  }
+
   return (
     <div style={styles.wrapper}>
       <div style={styles.scrollArea}>
@@ -36,19 +59,32 @@ export default function GanttChart({ tasks, onTaskClick }) {
           {/* Colonne des libellés */}
           <div style={{ width: LABEL_WIDTH, flexShrink: 0 }}>
             <div style={styles.headerCell}>Aufgabe</div>
-            {tasks.map((task) => (
-              <button
-                key={task.id}
-                onClick={() => onTaskClick(task)}
-                style={{
-                  ...styles.labelRow,
-                  borderLeft: `4px solid ${TRADE_COLORS[task.trade]}`,
-                }}
-                title={task.title}
-              >
-                <span style={styles.labelText}>{task.title}</span>
-              </button>
-            ))}
+            {rows.map((row) =>
+              row.type === 'group' ? (
+                <button
+                  key={`g-${row.code}`}
+                  onClick={() => toggleGroup(row.code)}
+                  style={styles.groupLabelRow}
+                  title={row.label}
+                >
+                  <span style={{ ...styles.groupChevron, transform: row.collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>▾</span>
+                  <span style={styles.groupLabelText}>{row.label}</span>
+                  <span style={styles.groupCount}>{row.count}</span>
+                </button>
+              ) : (
+                <button
+                  key={row.task.id}
+                  onClick={() => onTaskClick(row.task)}
+                  style={{
+                    ...styles.labelRow,
+                    borderLeft: `4px solid ${TRADE_COLORS[row.task.trade]}`,
+                  }}
+                  title={row.task.title}
+                >
+                  <span style={styles.labelText}>{row.task.title}</span>
+                </button>
+              )
+            )}
           </div>
 
           {/* Zone du Gantt */}
@@ -91,8 +127,22 @@ export default function GanttChart({ tasks, onTaskClick }) {
               />
             )}
 
-            {/* lignes de tâches */}
-            {tasks.map((task) => {
+            {/* lignes (en-tête de groupe ou tâche) */}
+            {rows.map((row) => {
+              if (row.type === 'group') {
+                return (
+                  <div
+                    key={`g-${row.code}`}
+                    style={{
+                      height: GROUP_ROW_HEIGHT,
+                      borderBottom: '1px solid var(--line)',
+                      borderTop: '1px solid var(--line)',
+                      background: '#f3f1ec',
+                    }}
+                  />
+                )
+              }
+              const task = row.task
               const start = daysBetween(minDate, startOfDay(new Date(task.start_date)))
               const span = daysBetween(
                 startOfDay(new Date(task.start_date)),
@@ -202,6 +252,46 @@ const styles = {
     borderBottom: '1px solid var(--line)',
     borderRight: '1px solid var(--line)',
     background: '#faf9f7',
+  },
+  groupLabelRow: {
+    height: GROUP_ROW_HEIGHT,
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '0 10px',
+    background: '#f3f1ec',
+    border: 'none',
+    borderBottom: '1px solid var(--line)',
+    borderTop: '1px solid var(--line)',
+    borderRight: '1px solid var(--line)',
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  groupChevron: {
+    fontSize: 10,
+    color: 'var(--ink-soft)',
+    transition: 'transform 0.15s ease',
+    flexShrink: 0,
+  },
+  groupLabelText: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--ink)',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+  },
+  groupCount: {
+    fontSize: 10,
+    fontFamily: 'var(--font-mono)',
+    color: 'var(--ink-soft)',
+    background: '#fff',
+    borderRadius: 999,
+    padding: '1px 6px',
+    border: '1px solid var(--line-strong)',
+    flexShrink: 0,
   },
   labelRow: {
     height: ROW_HEIGHT,
