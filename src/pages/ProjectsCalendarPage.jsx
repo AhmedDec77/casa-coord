@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import AppShell from '../components/AppShell'
 import MonthCalendar from '../components/MonthCalendar'
+import BlockersOverview from '../components/BlockersOverview'
 
 export default function ProjectsCalendarPage() {
   const navigate = useNavigate()
@@ -62,6 +63,8 @@ export default function ProjectsCalendarPage() {
             projects={projects}
             onProjectClick={(project) => navigate(`/projects/${project.id}`)}
           />
+
+          <BlockersOverview projects={projects} />
         </>
       )}
 
