@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { TRADE_LABELS, TRADE_COLORS, STATUS_LABELS, STATUS_COLORS } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { groupTasks } from '../lib/taskGroups'
+import BlockerModal from './BlockerModal'
+import TaskBlockersList from './TaskBlockersList'
 
 export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const { user, isAdmin } = useAuth()
   const [collapsed, setCollapsed] = useState({})
+  const [blockerModalTask, setBlockerModalTask] = useState(null)
 
   function canEdit(task) {
     return isAdmin || task.assigned_to === user.id
@@ -13,6 +16,23 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
 
   function toggleGroup(code) {
     setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
+  }
+
+  function handleStatusChange(task, newStatus) {
+    if (newStatus === 'bloque') {
+      setBlockerModalTask(task)
+      return
+    }
+    onUpdate(task.id, { status: newStatus })
+  }
+
+  async function handleBlockerConfirmed() {
+    await onUpdate(blockerModalTask.id, { status: 'bloque' })
+    setBlockerModalTask(null)
+  }
+
+  function handleBlockerCancelled() {
+    setBlockerModalTask(null)
   }
 
   if (tasks.length === 0) {
@@ -57,123 +77,141 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
               {!isCollapsed && group.tasks.map((task) => {
                 const editable = canEdit(task)
                 return (
-                  <tr key={task.id} style={styles.tr}>
-                    <td style={styles.tdTitle}>
-                      <input
-                        defaultValue={task.title}
-                        disabled={!editable}
-                        onBlur={(e) => {
-                          if (e.target.value !== task.title) onUpdate(task.id, { title: e.target.value })
-                        }}
-                        style={{ ...styles.inlineInput, fontWeight: 600 }}
-                      />
-                    </td>
-                    <td style={styles.td}>
-                      <span
-                        style={{
-                          ...styles.badge,
-                          background: TRADE_COLORS[task.trade] + '22',
-                          color: TRADE_COLORS[task.trade],
-                        }}
-                      >
-                        {TRADE_LABELS[task.trade]}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <select
-                        value={task.assigned_to || ''}
-                        disabled={!isAdmin}
-                        onChange={(e) => onUpdate(task.id, { assigned_to: e.target.value || null })}
-                        style={styles.select}
-                      >
-                        <option value="">—</option>
-                        {profiles.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.full_name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={styles.td}>
-                      <input
-                        type="date"
-                        defaultValue={task.start_date}
-                        disabled={!editable}
-                        onChange={(e) => {
-                          const newStart = e.target.value
-                          const patch = { start_date: newStart }
-                          // Si le nouveau début dépasse la fin actuelle, on pousse aussi la fin
-                          // pour ne pas violer la contrainte "end_date >= start_date".
-                          if (newStart > task.end_date) patch.end_date = newStart
-                          onUpdate(task.id, patch)
-                        }}
-                        style={styles.dateInput}
-                      />
-                    </td>
-                    <td style={styles.td}>
-                      <input
-                        type="date"
-                        defaultValue={task.end_date}
-                        disabled={!editable}
-                        onChange={(e) => {
-                          const newEnd = e.target.value
-                          const patch = { end_date: newEnd }
-                          // Si la nouvelle fin précède le début actuel, on recule aussi le début.
-                          if (newEnd < task.start_date) patch.start_date = newEnd
-                          onUpdate(task.id, patch)
-                        }}
-                        style={styles.dateInput}
-                      />
-                    </td>
-                    <td style={styles.td}>
-                      <select
-                        value={task.status}
-                        disabled={!editable}
-                        onChange={(e) => onUpdate(task.id, { status: e.target.value })}
-                        style={{
-                          ...styles.select,
-                          color: STATUS_COLORS[task.status],
-                          fontWeight: 600,
-                        }}
-                      >
-                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={styles.progressCell}>
+                  <Fragment key={task.id}>
+                    <tr style={styles.tr}>
+                      <td style={styles.tdTitle}>
                         <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={5}
-                          defaultValue={task.progress}
+                          defaultValue={task.title}
                           disabled={!editable}
-                          onChange={(e) => onUpdate(task.id, { progress: Number(e.target.value) })}
-                          style={{ width: 80 }}
+                          onBlur={(e) => {
+                            if (e.target.value !== task.title) onUpdate(task.id, { title: e.target.value })
+                          }}
+                          style={{ ...styles.inlineInput, fontWeight: 600 }}
                         />
-                        <span style={{ fontSize: 12, color: 'var(--ink-soft)', width: 32 }}>
-                          {task.progress}%
+                      </td>
+                      <td style={styles.td}>
+                        <span
+                          style={{
+                            ...styles.badge,
+                            background: TRADE_COLORS[task.trade] + '22',
+                            color: TRADE_COLORS[task.trade],
+                          }}
+                        >
+                          {TRADE_LABELS[task.trade]}
                         </span>
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      {isAdmin && (
-                        <button onClick={() => onDelete(task.id)} style={styles.deleteButton} title="Löschen">
-                          ✕
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                      <td style={styles.td}>
+                        <select
+                          value={task.assigned_to || ''}
+                          disabled={!isAdmin}
+                          onChange={(e) => onUpdate(task.id, { assigned_to: e.target.value || null })}
+                          style={styles.select}
+                        >
+                          <option value="">—</option>
+                          {profiles.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={styles.td}>
+                        <input
+                          type="date"
+                          defaultValue={task.start_date}
+                          disabled={!editable}
+                          onChange={(e) => {
+                            const newStart = e.target.value
+                            const patch = { start_date: newStart }
+                            // Si le nouveau début dépasse la fin actuelle, on pousse aussi la fin
+                            // pour ne pas violer la contrainte "end_date >= start_date".
+                            if (newStart > task.end_date) patch.end_date = newStart
+                            onUpdate(task.id, patch)
+                          }}
+                          style={styles.dateInput}
+                        />
+                      </td>
+                      <td style={styles.td}>
+                        <input
+                          type="date"
+                          defaultValue={task.end_date}
+                          disabled={!editable}
+                          onChange={(e) => {
+                            const newEnd = e.target.value
+                            const patch = { end_date: newEnd }
+                            // Si la nouvelle fin précède le début actuel, on recule aussi le début.
+                            if (newEnd < task.start_date) patch.start_date = newEnd
+                            onUpdate(task.id, patch)
+                          }}
+                          style={styles.dateInput}
+                        />
+                      </td>
+                      <td style={styles.td}>
+                        <select
+                          value={task.status}
+                          disabled={!editable}
+                          onChange={(e) => handleStatusChange(task, e.target.value)}
+                          style={{
+                            ...styles.select,
+                            color: STATUS_COLORS[task.status],
+                            fontWeight: 600,
+                          }}
+                        >
+                          {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={styles.progressCell}>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            defaultValue={task.progress}
+                            disabled={!editable}
+                            onChange={(e) => onUpdate(task.id, { progress: Number(e.target.value) })}
+                            style={{ width: 80 }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--ink-soft)', width: 32 }}>
+                            {task.progress}%
+                          </span>
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        {isAdmin && (
+                          <button onClick={() => onDelete(task.id)} style={styles.deleteButton} title="Löschen">
+                            ✕
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {task.status === 'bloque' && (
+                      <tr>
+                        <td colSpan={8} style={{ padding: 0 }}>
+                          <TaskBlockersList taskId={task.id} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>
           )
         })}
       </table>
+
+      {blockerModalTask && (
+        <BlockerModal
+          task={blockerModalTask}
+          onClose={handleBlockerCancelled}
+          onCancel={handleBlockerCancelled}
+          onConfirm={handleBlockerConfirmed}
+        />
+      )}
     </div>
   )
 }
