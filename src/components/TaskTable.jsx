@@ -1,16 +1,25 @@
+import { useState } from 'react'
 import { TRADE_LABELS, TRADE_COLORS, STATUS_LABELS, STATUS_COLORS } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { groupTasks } from '../lib/taskGroups'
 
 export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const { user, isAdmin } = useAuth()
+  const [collapsed, setCollapsed] = useState({})
 
   function canEdit(task) {
     return isAdmin || task.assigned_to === user.id
   }
 
+  function toggleGroup(code) {
+    setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
+  }
+
   if (tasks.length === 0) {
     return <div style={styles.empty}>Noch keine Aufgaben. Füge oben die erste Aufgabe hinzu.</div>
   }
+
+  const groups = groupTasks(tasks)
 
   return (
     <div style={styles.wrapper}>
@@ -27,111 +36,130 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
             <th style={styles.th}></th>
           </tr>
         </thead>
-        <tbody>
-          {tasks.map((task) => {
-            const editable = canEdit(task)
-            return (
-              <tr key={task.id} style={styles.tr}>
-                <td style={styles.tdTitle}>
-                  <input
-                    defaultValue={task.title}
-                    disabled={!editable}
-                    onBlur={(e) => {
-                      if (e.target.value !== task.title) onUpdate(task.id, { title: e.target.value })
-                    }}
-                    style={{ ...styles.inlineInput, fontWeight: 600 }}
-                  />
-                </td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.badge,
-                      background: TRADE_COLORS[task.trade] + '22',
-                      color: TRADE_COLORS[task.trade],
-                    }}
+        {groups.map((group) => {
+          const isCollapsed = collapsed[group.code] ?? true
+          return (
+            <tbody key={group.code}>
+              <tr>
+                <td colSpan={8} style={{ padding: 0 }}>
+                  <button
+                    onClick={() => toggleGroup(group.code)}
+                    style={styles.groupHeader}
                   >
-                    {TRADE_LABELS[task.trade]}
-                  </span>
-                </td>
-                <td style={styles.td}>
-                  <select
-                    value={task.assigned_to || ''}
-                    disabled={!isAdmin}
-                    onChange={(e) => onUpdate(task.id, { assigned_to: e.target.value || null })}
-                    style={styles.select}
-                  >
-                    <option value="">—</option>
-                    {profiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.full_name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td style={styles.td}>
-                  <input
-                    type="date"
-                    defaultValue={task.start_date}
-                    disabled={!editable}
-                    onChange={(e) => onUpdate(task.id, { start_date: e.target.value })}
-                    style={styles.dateInput}
-                  />
-                </td>
-                <td style={styles.td}>
-                  <input
-                    type="date"
-                    defaultValue={task.end_date}
-                    disabled={!editable}
-                    onChange={(e) => onUpdate(task.id, { end_date: e.target.value })}
-                    style={styles.dateInput}
-                  />
-                </td>
-                <td style={styles.td}>
-                  <select
-                    value={task.status}
-                    disabled={!editable}
-                    onChange={(e) => onUpdate(task.id, { status: e.target.value })}
-                    style={{
-                      ...styles.select,
-                      color: STATUS_COLORS[task.status],
-                      fontWeight: 600,
-                    }}
-                  >
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td style={styles.td}>
-                  <div style={styles.progressCell}>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      defaultValue={task.progress}
-                      disabled={!editable}
-                      onChange={(e) => onUpdate(task.id, { progress: Number(e.target.value) })}
-                      style={{ width: 80 }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--ink-soft)', width: 32 }}>
-                      {task.progress}%
+                    <span style={{ ...styles.groupChevron, transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+                      ▾
                     </span>
-                  </div>
-                </td>
-                <td style={styles.td}>
-                  {isAdmin && (
-                    <button onClick={() => onDelete(task.id)} style={styles.deleteButton} title="Löschen">
-                      ✕
-                    </button>
-                  )}
+                    <span style={styles.groupLabel}>{group.label}</span>
+                    <span style={styles.groupCount}>{group.tasks.length}</span>
+                  </button>
                 </td>
               </tr>
-            )
-          })}
-        </tbody>
+              {!isCollapsed && group.tasks.map((task) => {
+                const editable = canEdit(task)
+                return (
+                  <tr key={task.id} style={styles.tr}>
+                    <td style={styles.tdTitle}>
+                      <input
+                        defaultValue={task.title}
+                        disabled={!editable}
+                        onBlur={(e) => {
+                          if (e.target.value !== task.title) onUpdate(task.id, { title: e.target.value })
+                        }}
+                        style={{ ...styles.inlineInput, fontWeight: 600 }}
+                      />
+                    </td>
+                    <td style={styles.td}>
+                      <span
+                        style={{
+                          ...styles.badge,
+                          background: TRADE_COLORS[task.trade] + '22',
+                          color: TRADE_COLORS[task.trade],
+                        }}
+                      >
+                        {TRADE_LABELS[task.trade]}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      <select
+                        value={task.assigned_to || ''}
+                        disabled={!isAdmin}
+                        onChange={(e) => onUpdate(task.id, { assigned_to: e.target.value || null })}
+                        style={styles.select}
+                      >
+                        <option value="">—</option>
+                        {profiles.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={styles.td}>
+                      <input
+                        type="date"
+                        defaultValue={task.start_date}
+                        disabled={!editable}
+                        onChange={(e) => onUpdate(task.id, { start_date: e.target.value })}
+                        style={styles.dateInput}
+                      />
+                    </td>
+                    <td style={styles.td}>
+                      <input
+                        type="date"
+                        defaultValue={task.end_date}
+                        disabled={!editable}
+                        onChange={(e) => onUpdate(task.id, { end_date: e.target.value })}
+                        style={styles.dateInput}
+                      />
+                    </td>
+                    <td style={styles.td}>
+                      <select
+                        value={task.status}
+                        disabled={!editable}
+                        onChange={(e) => onUpdate(task.id, { status: e.target.value })}
+                        style={{
+                          ...styles.select,
+                          color: STATUS_COLORS[task.status],
+                          fontWeight: 600,
+                        }}
+                      >
+                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={styles.progressCell}>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          defaultValue={task.progress}
+                          disabled={!editable}
+                          onChange={(e) => onUpdate(task.id, { progress: Number(e.target.value) })}
+                          style={{ width: 80 }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--ink-soft)', width: 32 }}>
+                          {task.progress}%
+                        </span>
+                      </div>
+                    </td>
+                    <td style={styles.td}>
+                      {isAdmin && (
+                        <button onClick={() => onDelete(task.id)} style={styles.deleteButton} title="Löschen">
+                          ✕
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          )
+        })}
       </table>
     </div>
   )
@@ -160,6 +188,39 @@ const styles = {
     background: '#faf9f7',
     borderBottom: '1px solid var(--line)',
     whiteSpace: 'nowrap',
+  },
+  groupHeader: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 12px',
+    background: '#f3f1ec',
+    border: 'none',
+    borderBottom: '1px solid var(--line)',
+    borderTop: '1px solid var(--line)',
+    cursor: 'pointer',
+    textAlign: 'left',
+  },
+  groupChevron: {
+    fontSize: 11,
+    color: 'var(--ink-soft)',
+    transition: 'transform 0.15s ease',
+    display: 'inline-block',
+  },
+  groupLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: 'var(--ink)',
+  },
+  groupCount: {
+    fontSize: 11,
+    fontFamily: 'var(--font-mono)',
+    color: 'var(--ink-soft)',
+    background: '#fff',
+    borderRadius: 999,
+    padding: '1px 8px',
+    border: '1px solid var(--line-strong)',
   },
   tr: {
     borderBottom: '1px solid var(--line)',
