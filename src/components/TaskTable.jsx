@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { TRADE_LABELS, TRADE_COLORS, STATUS_LABELS, STATUS_COLORS } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { groupTasks } from '../lib/taskGroups'
+import { addWorkingDays, taskDurationWorkingDays } from '../lib/workingDays'
 import BlockerModal from './BlockerModal'
 import TaskBlockersList from './TaskBlockersList'
 import TaskDetailModal from './TaskDetailModal'
@@ -48,14 +49,15 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
     <div style={styles.wrapper}>
       <table style={styles.table}>
         <colgroup>
-          <col style={{ width: '32%' }} />
+          <col style={{ width: '28%' }} />
+          <col style={{ width: '11%' }} />
           <col style={{ width: '13%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '11%' }} />
-          <col style={{ width: '11%' }} />
           <col style={{ width: '10%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '9%' }} />
           <col style={{ width: '7%' }} />
-          <col style={{ width: '2%' }} />
+          <col style={{ width: '3%' }} />
         </colgroup>
         <thead>
           <tr>
@@ -64,6 +66,7 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
             <th style={styles.th}>Zugewiesen an</th>
             <th style={styles.th}>Start</th>
             <th style={styles.th}>Ende</th>
+            <th style={styles.th}>Dauer</th>
             <th style={styles.th}>Status</th>
             <th style={styles.th}>Fortschritt</th>
             <th style={styles.th}></th>
@@ -74,7 +77,7 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
           return (
             <tbody key={group.code}>
               <tr>
-                <td colSpan={8} style={{ padding: 0 }}>
+                <td colSpan={9} style={{ padding: 0 }}>
                   <button
                     onClick={() => toggleGroup(group.code)}
                     style={styles.groupHeader}
@@ -185,6 +188,36 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                         />
                       </td>
                       <td style={styles.td}>
+                        <div style={styles.durationCell}>
+                          <input
+                            type="number"
+                            min={1}
+                            disabled={!editable}
+                            defaultValue={taskDurationWorkingDays(task)}
+                            key={`${task.start_date}-${task.end_date}-${task.include_saturday}`}
+                            onBlur={(e) => {
+                              const days = Number(e.target.value)
+                              if (!days || days < 1) return
+                              const newEnd = addWorkingDays(task.start_date, days, task.include_saturday)
+                              if (newEnd !== task.end_date) onUpdate(task.id, { end_date: newEnd })
+                            }}
+                            style={styles.durationInput}
+                            title="Dauer in Arbeitstagen — Enddatum wird automatisch angepasst"
+                          />
+                          <label style={styles.saturdayToggle} title="Samstag als Arbeitstag zählen">
+                            <input
+                              type="checkbox"
+                              checked={!!task.include_saturday}
+                              disabled={!editable}
+                              onChange={(e) => {
+                                onUpdate(task.id, { include_saturday: e.target.checked })
+                              }}
+                            />
+                            <span>Sa</span>
+                          </label>
+                        </div>
+                      </td>
+                      <td style={styles.td}>
                         <select
                           value={task.status}
                           disabled={!editable}
@@ -226,7 +259,7 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                       </td>
                     </tr>
                     <tr>
-                      <td colSpan={8} style={{ padding: 0 }}>
+                      <td colSpan={9} style={{ padding: 0 }}>
                         <TaskBlockersList taskId={task.id} />
                       </td>
                     </tr>
@@ -393,6 +426,30 @@ const styles = {
     fontSize: 11,
     width: '100%',
     maxWidth: '100%',
+  },
+  durationCell: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    alignItems: 'center',
+  },
+  durationInput: {
+    border: '1px solid var(--line-strong)',
+    borderRadius: 4,
+    padding: '5px 2px',
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
+    textAlign: 'center',
+  },
+  saturdayToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    fontSize: 9,
+    color: 'var(--ink-soft)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   badge: {
     fontSize: 10,
