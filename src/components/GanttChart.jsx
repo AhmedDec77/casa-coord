@@ -6,8 +6,9 @@ const DAY_WIDTH = 28
 const ROW_HEIGHT = 40
 const GROUP_ROW_HEIGHT = 32
 const LABEL_WIDTH = 220
+const ASSIGNEE_WIDTH = 120
 
-export default function GanttChart({ tasks, onTaskClick }) {
+export default function GanttChart({ tasks, profiles, onTaskClick }) {
   const [collapsed, setCollapsed] = useState({})
 
   if (tasks.length === 0) {
@@ -18,6 +19,12 @@ export default function GanttChart({ tasks, onTaskClick }) {
 
   function toggleGroup(code) {
     setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
+  }
+
+  function assigneeName(task) {
+    if (!task.assigned_to) return null
+    const p = profiles?.find((p) => p.id === task.assigned_to)
+    return p ? p.full_name : null
   }
 
   const dates = tasks.flatMap((t) => [new Date(t.start_date), new Date(t.end_date)])
@@ -39,7 +46,7 @@ export default function GanttChart({ tasks, onTaskClick }) {
   })
 
   // Construit une liste plate de lignes (en-tête de groupe ou tâche), pour
-  // garder la colonne des libellés et la zone des barres parfaitement alignées.
+  // garder les colonnes (libellés, responsable) et la zone des barres alignées.
   const groups = groupTasks(tasks)
   const rows = []
   for (const group of groups) {
@@ -55,7 +62,7 @@ export default function GanttChart({ tasks, onTaskClick }) {
   return (
     <div style={styles.wrapper}>
       <div style={styles.scrollArea}>
-        <div style={{ display: 'flex', minWidth: LABEL_WIDTH + chartWidth }}>
+        <div style={{ display: 'flex', minWidth: LABEL_WIDTH + ASSIGNEE_WIDTH + chartWidth }}>
           {/* Colonne des libellés */}
           <div style={{ width: LABEL_WIDTH, flexShrink: 0 }}>
             <div style={styles.headerCell}>Aufgabe</div>
@@ -83,6 +90,33 @@ export default function GanttChart({ tasks, onTaskClick }) {
                 >
                   <span style={styles.labelText}>{row.task.title}</span>
                 </button>
+              )
+            )}
+          </div>
+
+          {/* Colonne du responsable, même code couleur que la table */}
+          <div style={{ width: ASSIGNEE_WIDTH, flexShrink: 0 }}>
+            <div style={styles.headerCell}>Verantw.</div>
+            {rows.map((row) =>
+              row.type === 'group' ? (
+                <div key={`g-${row.code}`} style={styles.groupAssigneeRow} />
+              ) : (
+                <div key={row.task.id} style={styles.assigneeRow}>
+                  {assigneeName(row.task) ? (
+                    <span
+                      style={{
+                        ...styles.assigneeBadge,
+                        background: TRADE_COLORS[row.task.trade] + '22',
+                        color: TRADE_COLORS[row.task.trade],
+                      }}
+                      title={assigneeName(row.task)}
+                    >
+                      {assigneeName(row.task)}
+                    </span>
+                  ) : (
+                    <span style={styles.assigneeEmpty}>—</span>
+                  )}
+                </div>
               )
             )}
           </div>
@@ -293,6 +327,13 @@ const styles = {
     border: '1px solid var(--line-strong)',
     flexShrink: 0,
   },
+  groupAssigneeRow: {
+    height: GROUP_ROW_HEIGHT,
+    background: '#f3f1ec',
+    borderBottom: '1px solid var(--line)',
+    borderTop: '1px solid var(--line)',
+    borderRight: '1px solid var(--line)',
+  },
   labelRow: {
     height: ROW_HEIGHT,
     width: '100%',
@@ -312,6 +353,29 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  assigneeRow: {
+    height: ROW_HEIGHT,
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 8px',
+    background: '#fff',
+    borderBottom: '1px solid var(--line)',
+    borderRight: '1px solid var(--line)',
+  },
+  assigneeBadge: {
+    fontSize: 10,
+    fontWeight: 600,
+    padding: '3px 7px',
+    borderRadius: 999,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '100%',
+  },
+  assigneeEmpty: {
+    fontSize: 12,
+    color: 'var(--line-strong)',
   },
   empty: {
     padding: 32,
