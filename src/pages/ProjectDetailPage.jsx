@@ -88,7 +88,14 @@ export default function ProjectDetailPage() {
     const { error } = await supabase.from('tasks').update(patch).eq('id', taskId)
     if (error) {
       console.error(error)
-      alert('Änderung abgelehnt: Du kannst nur deine eigenen Aufgaben bearbeiten.')
+      if (error.code === '23514') {
+        // violation de contrainte CHECK (ex: end_date < start_date)
+        alert('Änderung nicht möglich: Enddatum darf nicht vor dem Startdatum liegen.')
+      } else if (error.code === '42501' || error.message?.includes('row-level security')) {
+        alert('Änderung abgelehnt: Du kannst nur deine eigenen Aufgaben bearbeiten.')
+      } else {
+        alert(`Änderung fehlgeschlagen: ${error.message}`)
+      }
       loadAll()
       return
     }
