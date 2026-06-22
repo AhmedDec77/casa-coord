@@ -81,10 +81,13 @@ export function isWorkingDay(date, includeSaturday) {
   return true
 }
 
-// Compte le nombre de jours ouvrés entre startDate et endDate inclus (les deux bornes comptent).
+// Compte le nombre de jours ouvrés entre startDate et endDate inclus.
+// Si les deux bornes tombent sur des jours non ouvrés, retourne 0.
 export function countWorkingDays(startDate, endDate, includeSaturday) {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+  const start = typeof startDate === 'string' ? new Date(startDate) : new Date(startDate)
+  const end = typeof endDate === 'string' ? new Date(endDate) : new Date(endDate)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
   if (end < start) return 0
   let count = 0
   const cursor = new Date(start)
@@ -95,23 +98,23 @@ export function countWorkingDays(startDate, endDate, includeSaturday) {
   return count
 }
 
-// Calcule la date de fin en partant de startDate et en comptant
-// `workingDays` jours ouvrés (le jour de début compte comme jour 1
-// s'il est lui-même ouvré, sinon on avance jusqu'au premier jour ouvré).
+// Calcule la date de fin en partant de startDate et en avançant de
+// `workingDays` jours ouvrés. Si startDate n'est pas un jour ouvré,
+// on part du prochain jour ouvré (le start lui-même compte comme jour 1
+// s'il est ouvré). Retourne une date ISO YYYY-MM-DD.
 export function addWorkingDays(startDate, workingDays, includeSaturday) {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
+  const start = typeof startDate === 'string' ? new Date(startDate) : new Date(startDate)
+  start.setHours(0, 0, 0, 0)
   if (workingDays <= 0) return isoDate(start)
   let count = 0
   const cursor = new Date(start)
-  let result = new Date(start)
-  while (count < workingDays) {
+  while (true) {
     if (isWorkingDay(cursor, includeSaturday)) {
       count++
-      result = new Date(cursor)
+      if (count === workingDays) return isoDate(cursor)
     }
-    if (count < workingDays) cursor.setDate(cursor.getDate() + 1)
+    cursor.setDate(cursor.getDate() + 1)
   }
-  return isoDate(result)
 }
 
 // Raccourci pratique : durée en jours ouvrés d'une tâche (start_date -> end_date inclus).
