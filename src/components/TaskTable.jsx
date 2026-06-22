@@ -13,7 +13,6 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const [blockerModalTask, setBlockerModalTask] = useState(null)
   const [detailTask, setDetailTask] = useState(null)
   const [editingTitleId, setEditingTitleId] = useState(null)
-  const currentProfile = profiles?.find((p) => p.id === user.id)
 
   function canEdit(task) {
     return isAdmin || task.assigned_to === user.id
@@ -32,13 +31,19 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
     // façon, mais on évite l'aller-retour réseau inutile).
     if (!isAdmin && newAssigneeId && newAssigneeId !== user.id) return
 
-    if (newAssigneeId && newAssigneeId === user.id && currentProfile) {
+    if (newAssigneeId) {
       const assigneeProfile = profiles.find((p) => p.id === newAssigneeId)
-      if (assigneeProfile && assigneeProfile.trade !== task.trade && assigneeProfile.trade !== 'coordinateur') {
+      if (
+        assigneeProfile &&
+        assigneeProfile.trade !== task.trade &&
+        assigneeProfile.trade !== 'coordinateur' &&
+        assigneeProfile.trade !== 'architecte'
+      ) {
         const ok = confirm(
-          `Diese Aufgabe ist als "${TRADE_LABELS[task.trade]}" markiert, ` +
-          `dein Gewerk ist "${TRADE_LABELS[assigneeProfile.trade]}". ` +
-          `Trotzdem übernehmen?`
+          `⚠️ Gewerk-Konflikt\n\n` +
+          `Diese Aufgabe ist als "${TRADE_LABELS[task.trade]}" markiert.\n` +
+          `${assigneeProfile.full_name} ist "${TRADE_LABELS[assigneeProfile.trade]}".\n\n` +
+          `Trotzdem zuweisen?`
         )
         if (!ok) return
       }
