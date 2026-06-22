@@ -26,29 +26,26 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   }
 
   function handleAssigneeChange(task, newAssigneeId) {
-    // Un non-admin ne peut s'assigner qu'à lui-même ou se désassigner —
-    // jamais assigner quelqu'un d'autre (la base le bloquerait de toute
-    // façon, mais on évite l'aller-retour réseau inutile).
+    // Un non-admin ne peut s'assigner qu'à lui-même ou se désassigner.
     if (!isAdmin && newAssigneeId && newAssigneeId !== user.id) return
+
+    const patch = { assigned_to: newAssigneeId || null }
 
     if (newAssigneeId) {
       const assigneeProfile = profiles.find((p) => p.id === newAssigneeId)
+      // Aligne automatiquement le Gewerk sur le métier de la personne assignée
+      // (sauf coordinateur et architecte qui n'ont pas de corps d'exécution propre).
       if (
         assigneeProfile &&
-        assigneeProfile.trade !== task.trade &&
         assigneeProfile.trade !== 'coordinateur' &&
-        assigneeProfile.trade !== 'architecte'
+        assigneeProfile.trade !== 'architecte' &&
+        assigneeProfile.trade !== task.trade
       ) {
-        const ok = confirm(
-          `⚠️ Gewerk-Konflikt\n\n` +
-          `Diese Aufgabe ist als "${TRADE_LABELS[task.trade]}" markiert.\n` +
-          `${assigneeProfile.full_name} ist "${TRADE_LABELS[assigneeProfile.trade]}".\n\n` +
-          `Trotzdem zuweisen?`
-        )
-        if (!ok) return
+        patch.trade = assigneeProfile.trade
       }
     }
-    onUpdate(task.id, { assigned_to: newAssigneeId || null })
+
+    onUpdate(task.id, patch)
   }
 
   function toggleGroup(code) {
