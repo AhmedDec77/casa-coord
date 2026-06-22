@@ -13,9 +13,37 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const [blockerModalTask, setBlockerModalTask] = useState(null)
   const [detailTask, setDetailTask] = useState(null)
   const [editingTitleId, setEditingTitleId] = useState(null)
+  const currentProfile = profiles?.find((p) => p.id === user.id)
 
   function canEdit(task) {
     return isAdmin || task.assigned_to === user.id
+  }
+
+  // Qui peut toucher au champ "Zugewiesen an" :
+  // admin (toujours), le titulaire actuel (pour se libérer), ou n'importe
+  // qui si la tâche n'est pas encore assignée (pour se l'attribuer).
+  function canChangeAssignee(task) {
+    return isAdmin || task.assigned_to === user.id || !task.assigned_to
+  }
+
+  function handleAssigneeChange(task, newAssigneeId) {
+    // Un non-admin ne peut s'assigner qu'à lui-même ou se désassigner —
+    // jamais assigner quelqu'un d'autre (la base le bloquerait de toute
+    // façon, mais on évite l'aller-retour réseau inutile).
+    if (!isAdmin && newAssigneeId && newAssigneeId !== user.id) return
+
+    if (newAssigneeId && newAssigneeId === user.id && currentProfile) {
+      const assigneeProfile = profiles.find((p) => p.id === newAssigneeId)
+      if (assigneeProfile && assigneeProfile.trade !== task.trade && assigneeProfile.trade !== 'coordinateur') {
+        const ok = confirm(
+          `Diese Aufgabe ist als "${TRADE_LABELS[task.trade]}" markiert, ` +
+          `dein Gewerk ist "${TRADE_LABELS[assigneeProfile.trade]}". ` +
+          `Trotzdem übernehmen?`
+        )
+        if (!ok) return
+      }
+    }
+    onUpdate(task.id, { assigned_to: newAssigneeId || null })
   }
 
   function toggleGroup(code) {
@@ -144,13 +172,13 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                       <td style={styles.td}>
                         <select
                           value={task.assigned_to || ''}
-                          disabled={!isAdmin}
-                          onChange={(e) => onUpdate(task.id, { assigned_to: e.target.value || null })}
+                          disabled={!canChangeAssignee(task)}
+                          onChange={(e) => handleAssigneeChange(task, e.target.value)}
                           style={styles.select}
                         >
                           <option value="">—</option>
                           {profiles.map((p) => (
-                            <option key={p.id} value={p.id}>
+                            <option key={p.id} value={p.id} disabled={!isAdmin && p.id !== user.id}>
                               {p.full_name}
                             </option>
                           ))}
