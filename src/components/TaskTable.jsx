@@ -2,10 +2,140 @@ import { Fragment, useState } from 'react'
 import { TRADE_LABELS, TRADE_COLORS, STATUS_LABELS, STATUS_COLORS } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { groupTasks } from '../lib/taskGroups'
-import { addWorkingDays, taskDurationWorkingDays } from '../lib/workingDays'
+import { addWorkingDays, countWorkingDays, taskDurationWorkingDays } from '../lib/workingDays'
 import BlockerModal from './BlockerModal'
 import TaskBlockersList from './TaskBlockersList'
 import TaskDetailModal from './TaskDetailModal'
+
+// Composant dédié pour les cellules Start / Ende / Dauer
+// avec état local pour synchronisation immédiate sans attendre le re-render parent.
+function DateDurationCells({ task, editable, onUpdate }) {
+  const [startDate, setStartDate] = useState(task.start_date || '')
+  const [endDate, setEndDate] = useState(task.end_date || '')
+  const [includeSaturday, setIncludeSaturday] = useState(!!task.include_saturday)
+
+  const duration = startDate && endDate
+    ? countWorkingDays(startDate, endDate, includeSaturday)
+    : 0
+
+  function handleStartChange(newStart) {
+    if (!newStart) return
+    let newEnd = endDate
+    if (newStart > endDate) newEnd = newStart
+    setStartDate(newStart)
+    setEndDate(newEnd)
+    const patch = { start_date: newStart, end_date: newEnd }
+    onUpdate(task.id, patch)
+  }
+
+  function handleEndChange(newEnd) {
+    if (!newEnd) return
+    let newStart = startDate
+    if (newEnd < startDate) newStart = newEnd
+    setEndDate(newEnd)
+    setStartDate(newStart)
+    const patch = { end_date: newEnd, start_date: newStart }
+    onUpdate(task.id, patch)
+  }
+
+  function handleDurationChange(days) {
+    if (!days || days < 1 || !startDate) return
+    const newEnd = addWorkingDays(startDate, days, includeSaturday)
+    setEndDate(newEnd)
+    onUpdate(task.id, { end_date: newEnd })
+  }
+
+  function handleSaturdayChange(checked) {
+    setIncludeSaturday(checked)
+    onUpdate(task.id, { include_saturday: checked })
+  }
+
+  return (
+    <>
+      <td style={cellStyles.td}>
+        <input
+          type="date"
+          value={startDate}
+          disabled={!editable}
+          onChange={(e) => handleStartChange(e.target.value)}
+          style={cellStyles.dateInput}
+        />
+      </td>
+      <td style={cellStyles.td}>
+        <input
+          type="date"
+          value={endDate}
+          disabled={!editable}
+          onChange={(e) => handleEndChange(e.target.value)}
+          style={cellStyles.dateInput}
+        />
+      </td>
+      <td style={cellStyles.td}>
+        <div style={cellStyles.durationCell}>
+          <input
+            type="number"
+            min={1}
+            value={duration || ''}
+            disabled={!editable}
+            onChange={(e) => handleDurationChange(Number(e.target.value))}
+            style={cellStyles.durationInput}
+            title="Dauer in Arbeitstagen — Enddatum wird automatisch angepasst"
+          />
+          <label style={cellStyles.saturdayToggle} title="Samstag als Arbeitstag zählen">
+            <input
+              type="checkbox"
+              checked={includeSaturday}
+              disabled={!editable}
+              onChange={(e) => handleSaturdayChange(e.target.checked)}
+            />
+            <span>Sa</span>
+          </label>
+        </div>
+      </td>
+    </>
+  )
+}
+
+// Styles locaux pour DateDurationCells (identiques aux styles de la table)
+const cellStyles = {
+  td: {
+    padding: '6px 8px',
+    verticalAlign: 'middle',
+    overflow: 'hidden',
+  },
+  dateInput: {
+    border: '1px solid var(--line-strong)',
+    borderRadius: 4,
+    padding: '5px 2px',
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
+  },
+  durationCell: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    alignItems: 'center',
+  },
+  durationInput: {
+    border: '1px solid var(--line-strong)',
+    borderRadius: 4,
+    padding: '5px 2px',
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
+    textAlign: 'center',
+  },
+  saturdayToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    fontSize: 9,
+    color: 'var(--ink-soft)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+}
 
 export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const { user, isAdmin } = useAuth()
@@ -186,67 +316,11 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
                           ))}
                         </select>
                       </td>
-                      <td style={styles.td}>
-                        <input
-                          type="date"
-                          defaultValue={task.start_date}
-                          disabled={!editable}
-                          onChange={(e) => {
-                            const newStart = e.target.value
-                            const patch = { start_date: newStart }
-                            // Si le nouveau début dépasse la fin actuelle, on pousse aussi la fin
-                            // pour ne pas violer la contrainte "end_date >= start_date".
-                            if (newStart > task.end_date) patch.end_date = newStart
-                            onUpdate(task.id, patch)
-                          }}
-                          style={styles.dateInput}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <input
-                          type="date"
-                          defaultValue={task.end_date}
-                          disabled={!editable}
-                          onChange={(e) => {
-                            const newEnd = e.target.value
-                            const patch = { end_date: newEnd }
-                            // Si la nouvelle fin précède le début actuel, on recule aussi le début.
-                            if (newEnd < task.start_date) patch.start_date = newEnd
-                            onUpdate(task.id, patch)
-                          }}
-                          style={styles.dateInput}
-                        />
-                      </td>
-                      <td style={styles.td}>
-                        <div style={styles.durationCell}>
-                          <input
-                            type="number"
-                            min={1}
-                            disabled={!editable}
-                            defaultValue={taskDurationWorkingDays(task)}
-                            key={`${task.start_date}-${task.end_date}-${task.include_saturday}`}
-                            onBlur={(e) => {
-                              const days = Number(e.target.value)
-                              if (!days || days < 1) return
-                              const newEnd = addWorkingDays(task.start_date, days, task.include_saturday)
-                              if (newEnd !== task.end_date) onUpdate(task.id, { end_date: newEnd })
-                            }}
-                            style={styles.durationInput}
-                            title="Dauer in Arbeitstagen — Enddatum wird automatisch angepasst"
-                          />
-                          <label style={styles.saturdayToggle} title="Samstag als Arbeitstag zählen">
-                            <input
-                              type="checkbox"
-                              checked={!!task.include_saturday}
-                              disabled={!editable}
-                              onChange={(e) => {
-                                onUpdate(task.id, { include_saturday: e.target.checked })
-                              }}
-                            />
-                            <span>Sa</span>
-                          </label>
-                        </div>
-                      </td>
+                      <DateDurationCells
+                        task={task}
+                        editable={editable}
+                        onUpdate={onUpdate}
+                      />
                       <td style={styles.td}>
                         <select
                           value={task.status}
