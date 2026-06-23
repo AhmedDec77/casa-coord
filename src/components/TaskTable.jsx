@@ -47,6 +47,24 @@ var cellStyles = {
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
+  confirmButton: {
+    fontSize: 9,
+    fontFamily: 'var(--font-body)',
+    padding: '3px 5px',
+    borderRadius: 4,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    width: '100%',
+    textAlign: 'center',
+  },
+  confirmedBadge: {
+    fontSize: 9,
+    color: '#16a34a',
+    fontWeight: 700,
+    textAlign: 'center',
+    width: '100%',
+    display: 'block',
+  },
 }
 
 // Composant dédié pour les cellules Start / Ende / Dauer
@@ -133,25 +151,29 @@ function DateDurationCells({ task, editable, onUpdate }) {
             />
             <span>Sa</span>
           </label>
-          <label
-            style={{
-              ...cellStyles.saturdayToggle,
-              color: datesConfirmed ? '#16a34a' : 'var(--ink-soft)',
-              fontWeight: datesConfirmed ? 700 : 400,
-            }}
-            title="Dates sind definitiv bestätigt"
-          >
-            <input
-              type="checkbox"
-              checked={datesConfirmed}
-              disabled={!editable}
-              onChange={(e) => {
-                setDatesConfirmed(e.target.checked)
-                onUpdate(task.id, { dates_confirmed: e.target.checked })
+          {editable && (
+            <button
+              type="button"
+              onClick={() => {
+                const newVal = !datesConfirmed
+                setDatesConfirmed(newVal)
+                onUpdate(task.id, { dates_confirmed: newVal })
               }}
-            />
-            <span>✓</span>
-          </label>
+              style={{
+                ...cellStyles.confirmButton,
+                background: datesConfirmed ? '#dcfce7' : '#f3f1ec',
+                color: datesConfirmed ? '#16a34a' : 'var(--ink-soft)',
+                border: datesConfirmed ? '1px solid #86efac' : '1px solid var(--line-strong)',
+                fontWeight: datesConfirmed ? 700 : 400,
+              }}
+              title={datesConfirmed ? 'Daten sind bestätigt — klicken zum Aufheben' : 'Daten als definitiv bestätigen'}
+            >
+              {datesConfirmed ? 'Bestätigt ✔' : 'Bestätigen'}
+            </button>
+          )}
+          {!editable && datesConfirmed && (
+            <span style={cellStyles.confirmedBadge}>Bestätigt ✔</span>
+          )}
         </div>
       </td>
     </>
