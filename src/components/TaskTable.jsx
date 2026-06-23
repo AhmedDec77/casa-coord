@@ -182,6 +182,20 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
     setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
   }
 
+  function expandAll() {
+    const next = {}
+    groups.forEach((g) => { next[g.code] = false })
+    setCollapsed(next)
+  }
+
+  function collapseAll() {
+    const next = {}
+    groups.forEach((g) => { next[g.code] = true })
+    setCollapsed(next)
+  }
+
+  const allCollapsed = groups.every((g) => collapsed[g.code] ?? true)
+
   function handleStatusChange(task, newStatus) {
     if (newStatus === 'bloque') {
       setBlockerModalTask(task)
@@ -207,6 +221,14 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
 
   return (
     <div style={styles.wrapper}>
+      <div style={styles.toolbarRow}>
+        <button
+          onClick={allCollapsed ? expandAll : collapseAll}
+          style={styles.expandAllButton}
+        >
+          {allCollapsed ? '+ Alle aufklappen' : '− Alle zuklappen'}
+        </button>
+      </div>
       <table style={styles.table}>
         <colgroup>
           <col style={{ width: '28%' }} />
@@ -400,6 +422,23 @@ const styles = {
     border: '1px solid var(--line)',
     borderRadius: 'var(--radius-md)',
     background: 'var(--bg-elevated)',
+  },
+  toolbarRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    padding: '8px 12px',
+    borderBottom: '1px solid var(--line)',
+    background: '#faf9f7',
+  },
+  expandAllButton: {
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '5px 12px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--line-strong)',
+    background: '#fff',
+    cursor: 'pointer',
+    color: 'var(--ink)',
   },
   table: {
     width: '100%',
