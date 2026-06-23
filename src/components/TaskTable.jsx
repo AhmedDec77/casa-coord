@@ -7,6 +7,48 @@ import BlockerModal from './BlockerModal'
 import TaskBlockersList from './TaskBlockersList'
 import TaskDetailModal from './TaskDetailModal'
 
+// Styles locaux pour DateDurationCells — déclarés avant le composant
+// pour éviter ReferenceError (const n'est pas hoisted).
+const cellStyles = {
+  td: {
+    padding: '6px 8px',
+    verticalAlign: 'middle',
+    overflow: 'hidden',
+  },
+  dateInput: {
+    border: '1px solid var(--line-strong)',
+    borderRadius: 4,
+    padding: '5px 2px',
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
+  },
+  durationCell: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    alignItems: 'center',
+  },
+  durationInput: {
+    border: '1px solid var(--line-strong)',
+    borderRadius: 4,
+    padding: '5px 2px',
+    fontSize: 11,
+    width: '100%',
+    maxWidth: '100%',
+    textAlign: 'center',
+  },
+  saturdayToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    fontSize: 9,
+    color: 'var(--ink-soft)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+}
+
 // Composant dédié pour les cellules Start / Ende / Dauer
 // avec état local pour synchronisation immédiate sans attendre le re-render parent.
 function DateDurationCells({ task, editable, onUpdate }) {
@@ -97,45 +139,6 @@ function DateDurationCells({ task, editable, onUpdate }) {
 }
 
 // Styles locaux pour DateDurationCells (identiques aux styles de la table)
-const cellStyles = {
-  td: {
-    padding: '6px 8px',
-    verticalAlign: 'middle',
-    overflow: 'hidden',
-  },
-  dateInput: {
-    border: '1px solid var(--line-strong)',
-    borderRadius: 4,
-    padding: '5px 2px',
-    fontSize: 11,
-    width: '100%',
-    maxWidth: '100%',
-  },
-  durationCell: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 3,
-    alignItems: 'center',
-  },
-  durationInput: {
-    border: '1px solid var(--line-strong)',
-    borderRadius: 4,
-    padding: '5px 2px',
-    fontSize: 11,
-    width: '100%',
-    maxWidth: '100%',
-    textAlign: 'center',
-  },
-  saturdayToggle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 2,
-    fontSize: 9,
-    color: 'var(--ink-soft)',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
-}
 
 export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   const { user, isAdmin } = useAuth()
