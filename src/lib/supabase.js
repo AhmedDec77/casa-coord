@@ -37,7 +37,7 @@ export const STATUS_LABELS = {
 }
 
 export const STATUS_COLORS = {
-  a_faire: '#94a3b8',
+  a_faire: '#8b5cf6',
   en_cours: '#3b82f6',
   fait: '#22c55e',
   bloque: '#ef4444',
