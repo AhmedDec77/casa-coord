@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { countWorkingDays as countWorkingDaysSimple } from '../lib/workingDays'
 import AppShell from '../components/AppShell'
 import MonthCalendar from '../components/MonthCalendar'
 import BlockersOverview from '../components/BlockersOverview'
@@ -10,6 +11,7 @@ export default function ProjectsCalendarPage() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
   const [projects, setProjects] = useState([])
+  const [statsMap, setStatsMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [showNewProject, setShowNewProject] = useState(false)
 
@@ -19,13 +21,33 @@ export default function ProjectsCalendarPage() {
 
   async function loadProjects() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('archived', false)
-      .order('start_date', { ascending: true, nullsFirst: false })
-    if (error) console.error(error)
-    setProjects(data ?? [])
+    const [projectsRes, tasksRes, blockersRes] = await Promise.all([
+      supabase.from('projects').select('*').eq('archived', false).order('start_date', { ascending: true, nullsFirst: false }),
+      supabase.from('tasks').select('project_id, start_date, end_date, progress, include_saturday'),
+      supabase.from('task_blockers').select('task_id, resolved_at, task:task_id (project_id)').is('resolved_at', null),
+    ])
+    if (projectsRes.error) console.error(projectsRes.error)
+    const projectList = projectsRes.data ?? []
+    setProjects(projectList)
+
+    // Calculer les stats par projet
+    const tasks = tasksRes.data ?? []
+    const blockers = blockersRes.data ?? []
+    const map = {}
+    for (const p of projectList) {
+      const ptasks = tasks.filter((t) => t.project_id === p.id)
+      const unplanned = ptasks.filter((t) => !t.start_date || !t.end_date || (t.start_date === t.end_date && new Date(t.start_date).getDay() === 0)).length
+      const totalDays = ptasks.reduce((acc, t) => {
+        if (!t.start_date || !t.end_date) return acc
+        return acc + countWorkingDaysSimple(t.start_date, t.end_date, t.include_saturday)
+      }, 0)
+      const avgProgress = ptasks.length > 0
+        ? Math.round(ptasks.reduce((acc, t) => acc + (t.progress ?? 0), 0) / ptasks.length)
+        : 0
+      const activeBlockers = blockers.filter((b) => b.task?.project_id === p.id).length
+      map[p.id] = { unplanned, totalDays, avgProgress, activeBlockers, total: ptasks.length }
+    }
+    setStatsMap(map)
     setLoading(false)
   }
 
@@ -54,6 +76,7 @@ export default function ProjectsCalendarPage() {
               <ProjectCard
                 key={project.id}
                 project={project}
+                stats={statsMap[project.id]}
                 onClick={() => navigate(`/projects/${project.id}`)}
               />
             ))}
@@ -81,7 +104,7 @@ export default function ProjectsCalendarPage() {
   )
 }
 
-function ProjectCard({ project, onClick }) {
+function ProjectCard({ project, stats, onClick }) {
   const dateRange = formatDateRange(project.start_date, project.end_date)
   return (
     <button onClick={onClick} style={{ ...styles.card, borderTopColor: project.color }}>
@@ -90,6 +113,34 @@ function ProjectCard({ project, onClick }) {
         <div style={styles.cardClient}>{project.client_name}</div>
       )}
       <div style={styles.cardDate}>{dateRange}</div>
+
+      {stats && (
+        <div style={styles.cardStats}>
+          <div style={styles.statItem}>
+            <span style={styles.statValue}>{stats.totalDays}</span>
+            <span style={styles.statLabel}>Arbeitstage</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={{ ...styles.statValue, color: 'var(--status-fait)' }}>{stats.avgProgress}%</span>
+            <span style={styles.statLabel}>Fortschritt</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={{ ...styles.statValue, color: stats.unplanned > 0 ? '#d97706' : 'var(--ink-soft)' }}>
+              {stats.unplanned}
+            </span>
+            <span style={styles.statLabel}>Ungeplant</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={{ ...styles.statValue, color: stats.activeBlockers > 0 ? '#dc2626' : 'var(--ink-soft)' }}>
+              {stats.activeBlockers}
+            </span>
+            <span style={styles.statLabel}>Blockiert</span>
+          </div>
+          <div style={styles.progressBar}>
+            <div style={{ ...styles.progressFill, width: `${stats.avgProgress}%`, background: project.color }} />
+          </div>
+        </div>
+      )}
     </button>
   )
 }
@@ -185,14 +236,14 @@ function Field({ label, children, style }) {
   )
 }
 
-const inputStyle = {
+var inputStyle = {
   padding: '9px 11px',
   borderRadius: 'var(--radius-sm)',
   border: '1px solid var(--line-strong)',
   background: '#fff',
 }
 
-const styles = {
+var styles = {
   header: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -261,6 +312,48 @@ const styles = {
     fontFamily: 'var(--font-mono)',
     fontSize: 12,
     color: 'var(--ink-soft)',
+    marginBottom: 12,
+  },
+  cardStats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 6,
+    paddingTop: 12,
+    borderTop: '1px solid var(--line)',
+    marginTop: 4,
+  },
+  statItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 2,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: 'var(--ink)',
+  },
+  statLabel: {
+    fontSize: 9,
+    fontFamily: 'var(--font-mono)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    color: 'var(--ink-soft)',
+    textAlign: 'center',
+  },
+  progressBar: {
+    gridColumn: '1 / -1',
+    height: 4,
+    background: 'var(--line)',
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    transition: 'width 0.3s ease',
   },
   modalOverlay: {
     position: 'fixed',
