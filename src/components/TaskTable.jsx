@@ -55,6 +55,7 @@ function DateDurationCells({ task, editable, onUpdate }) {
   const [startDate, setStartDate] = useState(task.start_date || '')
   const [endDate, setEndDate] = useState(task.end_date || '')
   const [includeSaturday, setIncludeSaturday] = useState(!!task.include_saturday)
+  const [datesConfirmed, setDatesConfirmed] = useState(!!task.dates_confirmed)
 
   const duration = startDate && endDate
     ? countWorkingDays(startDate, endDate, includeSaturday)
@@ -131,6 +132,25 @@ function DateDurationCells({ task, editable, onUpdate }) {
               onChange={(e) => handleSaturdayChange(e.target.checked)}
             />
             <span>Sa</span>
+          </label>
+          <label
+            style={{
+              ...cellStyles.saturdayToggle,
+              color: datesConfirmed ? '#16a34a' : 'var(--ink-soft)',
+              fontWeight: datesConfirmed ? 700 : 400,
+            }}
+            title="Dates sind definitiv bestätigt"
+          >
+            <input
+              type="checkbox"
+              checked={datesConfirmed}
+              disabled={!editable}
+              onChange={(e) => {
+                setDatesConfirmed(e.target.checked)
+                onUpdate(task.id, { dates_confirmed: e.target.checked })
+              }}
+            />
+            <span>✓</span>
           </label>
         </div>
       </td>
