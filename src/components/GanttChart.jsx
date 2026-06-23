@@ -17,8 +17,24 @@ export default function GanttChart({ tasks, profiles, onTaskClick }) {
     )
   }
 
+  const groups = groupTasks(tasks)
+  const allCodes = groups.map((g) => g.code)
+  const allCollapsed = allCodes.every((code) => collapsed[code] ?? true)
+
   function toggleGroup(code) {
     setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
+  }
+
+  function expandAll() {
+    const next = {}
+    allCodes.forEach((code) => { next[code] = false })
+    setCollapsed(next)
+  }
+
+  function collapseAll() {
+    const next = {}
+    allCodes.forEach((code) => { next[code] = true })
+    setCollapsed(next)
   }
 
   function assigneeName(task) {
@@ -47,7 +63,6 @@ export default function GanttChart({ tasks, profiles, onTaskClick }) {
 
   // Construit une liste plate de lignes (en-tête de groupe ou tâche), pour
   // garder les colonnes (libellés, responsable) et la zone des barres alignées.
-  const groups = groupTasks(tasks)
   const rows = []
   for (const group of groups) {
     const isCollapsed = collapsed[group.code] ?? true
@@ -61,6 +76,14 @@ export default function GanttChart({ tasks, profiles, onTaskClick }) {
 
   return (
     <div style={styles.wrapper}>
+      <div style={styles.toolbarRow}>
+        <button
+          onClick={allCollapsed ? expandAll : collapseAll}
+          style={styles.expandAllButton}
+        >
+          {allCollapsed ? '+ Alle aufklappen' : '− Alle zuklappen'}
+        </button>
+      </div>
       <div style={styles.scrollArea}>
         <div style={{ display: 'flex', minWidth: LABEL_WIDTH + ASSIGNEE_WIDTH + chartWidth }}>
           {/* Colonne des libellés */}
@@ -269,6 +292,23 @@ const styles = {
     borderRadius: 'var(--radius-md)',
     background: 'var(--bg-elevated)',
     overflow: 'hidden',
+  },
+  toolbarRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    padding: '8px 12px',
+    borderBottom: '1px solid var(--line)',
+    background: '#faf9f7',
+  },
+  expandAllButton: {
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '5px 12px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--line-strong)',
+    background: '#fff',
+    cursor: 'pointer',
+    color: 'var(--ink)',
   },
   scrollArea: {
     overflowX: 'auto',
