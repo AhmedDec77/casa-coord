@@ -23,7 +23,7 @@ export default function ProjectsCalendarPage() {
     setLoading(true)
     const [projectsRes, tasksRes, blockersRes] = await Promise.all([
       supabase.from('projects').select('*').eq('archived', false).order('start_date', { ascending: true, nullsFirst: false }),
-      supabase.from('tasks').select('project_id, start_date, end_date, progress, include_saturday'),
+      supabase.from('tasks').select('project_id, start_date, end_date, progress, include_saturday, dates_confirmed'),
       supabase.from('task_blockers').select('task_id, resolved_at, task:task_id (project_id)').is('resolved_at', null),
     ])
     if (projectsRes.error) console.error(projectsRes.error)
@@ -36,7 +36,7 @@ export default function ProjectsCalendarPage() {
     const map = {}
     for (const p of projectList) {
       const ptasks = tasks.filter((t) => t.project_id === p.id)
-      const unplanned = ptasks.filter((t) => !t.start_date || !t.end_date || (t.start_date === t.end_date && new Date(t.start_date).getDay() === 0)).length
+      const unplanned = ptasks.filter((t) => !t.dates_confirmed).length
       const totalDays = ptasks.reduce((acc, t) => {
         if (!t.start_date || !t.end_date) return acc
         return acc + countWorkingDaysSimple(t.start_date, t.end_date, t.include_saturday)
@@ -128,7 +128,7 @@ function ProjectCard({ project, stats, onClick }) {
             <span style={{ ...styles.statValue, color: stats.unplanned > 0 ? '#d97706' : 'var(--ink-soft)' }}>
               {stats.unplanned}
             </span>
-            <span style={styles.statLabel}>Ungeplant</span>
+            <span style={styles.statLabel}>Nicht best.</span>
           </div>
           <div style={styles.statItem}>
             <span style={{ ...styles.statValue, color: stats.activeBlockers > 0 ? '#dc2626' : 'var(--ink-soft)' }}>
