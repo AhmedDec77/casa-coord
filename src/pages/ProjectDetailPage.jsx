@@ -21,7 +21,7 @@ export default function ProjectDetailPage() {
   const loadAll = useCallback(async () => {
     const [projectRes, tasksRes, profilesRes] = await Promise.all([
       supabase.from('projects').select('*').eq('id', projectId).single(),
-      supabase.from('tasks').select('*').eq('project_id', projectId).order('start_date'),
+      supabase.from('tasks').select('*').eq('project_id', projectId).order('title'),
       supabase.from('profiles').select('*').order('full_name'),
     ])
     if (projectRes.error) console.error(projectRes.error)
