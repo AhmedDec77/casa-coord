@@ -402,6 +402,9 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
     onUpdate(task.id, patch)
   }
 
+  const groups = groupTasks(tasks)
+  const allCollapsed = groups.every((g) => collapsed[g.code] ?? true)
+
   function toggleGroup(code) {
     setCollapsed((prev) => ({ ...prev, [code]: !prev[code] }))
   }
@@ -417,8 +420,6 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
     groups.forEach((g) => { next[g.code] = true })
     setCollapsed(next)
   }
-
-  const allCollapsed = groups.every((g) => collapsed[g.code] ?? true)
 
   function handleStatusChange(task, newStatus) {
     if (newStatus === 'bloque') {
@@ -440,8 +441,6 @@ export default function TaskTable({ tasks, profiles, onUpdate, onDelete }) {
   if (tasks.length === 0) {
     return <div style={styles.empty}>Noch keine Aufgaben. Füge oben die erste Aufgabe hinzu.</div>
   }
-
-  const groups = groupTasks(tasks)
 
   return (
     <div style={styles.wrapper}>
