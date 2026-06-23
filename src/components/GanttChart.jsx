@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TRADE_COLORS, STATUS_COLORS } from '../lib/supabase'
+import { TRADE_COLORS, STATUS_COLORS, STATUS_LABELS } from '../lib/supabase'
 import { groupTasks } from '../lib/taskGroups'
 
 const DAY_WIDTH = 28
@@ -77,6 +77,14 @@ export default function GanttChart({ tasks, profiles, onTaskClick }) {
   return (
     <div style={styles.wrapper}>
       <div style={styles.toolbarRow}>
+        <div style={styles.legend}>
+          {Object.entries(STATUS_LABELS).map(([key, label]) => (
+            <div key={key} style={styles.legendItem}>
+              <span style={{ ...styles.legendDot, background: STATUS_COLORS[key] }} />
+              <span style={styles.legendLabel}>{label}</span>
+            </div>
+          ))}
+        </div>
         <button
           onClick={allCollapsed ? expandAll : collapseAll}
           style={styles.expandAllButton}
@@ -286,7 +294,7 @@ function isWeekend(d) {
   return day === 0 || day === 6
 }
 
-const styles = {
+var styles = {
   wrapper: {
     border: '1px solid var(--line)',
     borderRadius: 'var(--radius-md)',
@@ -295,10 +303,33 @@ const styles = {
   },
   toolbarRow: {
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: '8px 12px',
     borderBottom: '1px solid var(--line)',
     background: '#faf9f7',
+  },
+  legend: {
+    display: 'flex',
+    gap: 14,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  legendItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    flexShrink: 0,
+  },
+  legendLabel: {
+    fontSize: 11,
+    color: 'var(--ink-soft)',
+    fontWeight: 500,
   },
   expandAllButton: {
     fontSize: 12,
