@@ -9,7 +9,7 @@ import TaskDetailModal from './TaskDetailModal'
 
 // Styles locaux pour DateDurationCells — déclarés avant le composant
 // pour éviter ReferenceError (const n'est pas hoisted).
-const cellStyles = {
+var cellStyles = {
   td: {
     padding: '6px 8px',
     verticalAlign: 'middle',
@@ -140,7 +140,7 @@ function DateDurationCells({ task, editable, onUpdate }) {
 
 // Styles locaux pour DateDurationCells (identiques aux styles de la table)
 
-const styles = {
+var styles = {
   wrapper: {
     border: '1px solid var(--line)',
     borderRadius: 'var(--radius-md)',
