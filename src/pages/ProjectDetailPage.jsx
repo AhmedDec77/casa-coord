@@ -123,6 +123,14 @@ export default function ProjectDetailPage() {
     if (patch.status && taskBeforeUpdate?.status === 'bloque' && patch.status !== 'bloque') {
       await resolveActiveBlocker(taskId)
     }
+    // Auto-confirmer les dates si la tâche passe à un statut actif
+    if (patch.status && ['en_cours', 'fait', 'bloque'].includes(patch.status)) {
+      const alreadyConfirmed = taskBeforeUpdate?.dates_confirmed
+      if (!alreadyConfirmed) {
+        await supabase.from('tasks').update({ dates_confirmed: true }).eq('id', taskId)
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, dates_confirmed: true } : t)))
+      }
+    }
     if (patch.start_date || patch.end_date) {
       const updatedTask = tasks.find((t) => t.id === taskId)
       const newStart = patch.start_date ?? updatedTask?.start_date
@@ -299,7 +307,7 @@ function ModalField({ label, children, style }) {
   )
 }
 
-const modalStyles = {
+var modalStyles = {
   overlay: {
     position: 'fixed',
     inset: 0,
@@ -344,7 +352,7 @@ const modalStyles = {
   },
 }
 
-const styles = {
+var styles = {
   backLink: {
     display: 'inline-block',
     fontSize: 13,
